@@ -2,24 +2,31 @@ from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 import httpx
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+HOST = os.getenv("HOST", "0.0.0.0")
+PORT = int(os.getenv("PORT", 8000))
+TIMEOUT = float(os.getenv("TIMEOUT", 30.0))
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")
 
 app = FastAPI()
 
-# CORS для всех источников
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 @app.get("/")
 async def proxy(url: str = Query(...)):
-    """Универсальный CORS прокси"""
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=TIMEOUT) as client:
             response = await client.get(url, follow_redirects=True)
-            
+        
         return Response(
             content=response.content,
             status_code=response.status_code,
@@ -33,4 +40,4 @@ async def proxy(url: str = Query(...)):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host=HOST, port=PORT)
